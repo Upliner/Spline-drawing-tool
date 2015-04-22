@@ -1,27 +1,22 @@
-package org.openstreetmap.josm.plugins.WayGeneralization;
+package org.openstreetmap.josm.plugins.SplineDrawingTool;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import javafx.util.Pair;
-
-import org.openstreetmap.josm.Main;
-import org.openstreetmap.josm.command.AddCommand;
-import org.openstreetmap.josm.command.ChangeCommand;
+import org.openstreetmap.josm.plugins.SplineDrawingTool.Pair;
+import org.openstreetmap.josm.plugins.SplineDrawingTool.Point;
 import org.openstreetmap.josm.command.Command;
-import org.openstreetmap.josm.command.DeleteCommand;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.Node;
-import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.data.osm.Way;
 
 public class Test {
 	
 	 public Pair<List<Node>,Node> GetNodes(int index,Way way,Node n0,Node n, Collection<Command> cmds){
 	    	
-	    	List<org.openstreetmap.josm.plugins.WayGeneralization.Point> w4points =new ArrayList<>();
-	        List<org.openstreetmap.josm.plugins.WayGeneralization.Point> w5points =new ArrayList<>();
+	    	List<Point> w4points =new ArrayList<>();
+	        List<Point> w5points =new ArrayList<>();
 	        
 	        //List<NodePos> npos=new ArrayList<>();
 	        List<Node> vect=new ArrayList<>();
@@ -66,8 +61,8 @@ public class Test {
 	                pp2x=n.getCoor().lat();
 	                pp2y=n.getCoor().lon();
 	                
-	                org.openstreetmap.josm.plugins.WayGeneralization.Point p1a=new org.openstreetmap.josm.plugins.WayGeneralization.Point(pp1x, pp1y);
-	                org.openstreetmap.josm.plugins.WayGeneralization.Point p1b=new org.openstreetmap.josm.plugins.WayGeneralization.Point(pp2x, pp2y);
+	                Point p1a=new Point(pp1x, pp1y);
+	                Point p1b=new Point(pp2x, pp2y);
 	                w4points.add(p1a);
 	                w4points.add(p1b);
 	                System.out.println("w4pctttt="+w4points);
@@ -86,8 +81,8 @@ public class Test {
 	            pp2x4=n0.getCoor().lat();
 	            pp2y4=n0.getCoor().lon();
 	            
-	            org.openstreetmap.josm.plugins.WayGeneralization.Point p1a4=new org.openstreetmap.josm.plugins.WayGeneralization.Point(pp1x4, pp1y4);
-	            org.openstreetmap.josm.plugins.WayGeneralization.Point p1b4=new org.openstreetmap.josm.plugins.WayGeneralization.Point(pp2x4, pp2y4);
+	            Point p1a4=new Point(pp1x4, pp1y4);
+	            Point p1b4=new Point(pp2x4, pp2y4);
 	            w4points.add(p1a4);
 	            w4points.add(p1b4);
 	            System.out.println("w4pctttt="+w4points);
@@ -124,15 +119,15 @@ public class Test {
 	            pp2x=n.getCoor().lat();
 	            pp2y=n.getCoor().lon();
 	             
-	            org.openstreetmap.josm.plugins.WayGeneralization.Point p1a=new org.openstreetmap.josm.plugins.WayGeneralization.Point(pp1x, pp1y);
-	            org.openstreetmap.josm.plugins.WayGeneralization.Point p1b=new org.openstreetmap.josm.plugins.WayGeneralization.Point(pp2x, pp2y);
+	            Point p1a=new Point(pp1x, pp1y);
+	            Point p1b=new Point(pp2x, pp2y);
 	            w5points.add(p1a);
 	            w5points.add(p1b);
 	            System.out.println("w5pctttt="+w5points);
 	            //index++;
 	    	}
 	    	if(index>0){
-	        	WayGeneralizationAlgorithm alg=new WayGeneralizationAlgorithm();
+	        	Spline alg=new Spline();
 	        	System.out.println("w4pct="+w4points);
 	        	System.out.println("w5pct="+w5points);
 //	        	

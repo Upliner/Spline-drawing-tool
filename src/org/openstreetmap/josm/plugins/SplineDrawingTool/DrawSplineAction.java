@@ -1,4 +1,4 @@
-package org.openstreetmap.josm.plugins.WayGeneralization;
+package org.openstreetmap.josm.plugins.SplineDrawingTool;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
@@ -11,19 +11,15 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
 import org.openstreetmap.josm.Main;
 import org.openstreetmap.josm.actions.JosmAction;
-import org.openstreetmap.josm.actions.mapmode.DrawAction;
-import org.openstreetmap.josm.actions.mapmode.DrawAction.BackSpaceAction;
 import org.openstreetmap.josm.actions.mapmode.MapMode;
 import org.openstreetmap.josm.gui.MapFrame;
 import org.openstreetmap.josm.gui.MapView;
-import org.openstreetmap.josm.gui.Notification;
 import org.openstreetmap.josm.gui.layer.MapViewPaintable;
 import org.openstreetmap.josm.gui.util.KeyPressReleaseListener;
 import org.openstreetmap.josm.gui.util.ModifierListener;
@@ -33,91 +29,52 @@ import org.openstreetmap.josm.data.coor.EastNorth;
 import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.data.osm.Way;
-//import org.openstreetmap.josm.plugins.WayGeneralization.DrawActionWayGener.SnapChangeAction;
-import org.openstreetmap.josm.tools.I18n;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Shortcut;
 
 import static org.openstreetmap.josm.gui.help.HelpUtil.ht;
 import static org.openstreetmap.josm.tools.I18n.marktr;
-import static org.openstreetmap.josm.tools.I18n.tr;
 import static org.openstreetmap.josm.tools.I18n.trn;
 
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Cursor;
-import java.awt.Graphics2D;
 import java.awt.Point;
-import java.awt.Shape;
-import java.awt.Stroke;
-import java.awt.event.ActionEvent;
-import java.awt.event.KeyEvent;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 import java.awt.geom.GeneralPath;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
 import javax.swing.AbstractAction;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
 
-import org.openstreetmap.josm.Main;
-import org.openstreetmap.josm.actions.JosmAction;
 import org.openstreetmap.josm.command.AddCommand;
-import org.openstreetmap.josm.command.AddPrimitivesCommand;
 import org.openstreetmap.josm.command.ChangeCommand;
 import org.openstreetmap.josm.command.Command;
-import org.openstreetmap.josm.command.DeleteCommand;
 import org.openstreetmap.josm.command.SequenceCommand;
-import org.openstreetmap.josm.data.Bounds;
-import org.openstreetmap.josm.data.SelectionChangedListener;
-import org.openstreetmap.josm.data.coor.EastNorth;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
-import org.openstreetmap.josm.data.osm.Node;
-import org.openstreetmap.josm.data.osm.NodePositionComparator;
-import org.openstreetmap.josm.data.osm.OsmPrimitive;
-import org.openstreetmap.josm.data.osm.Way;
 import org.openstreetmap.josm.data.osm.WaySegment;
 import org.openstreetmap.josm.data.osm.visitor.paint.PaintColors;
 import org.openstreetmap.josm.gui.MainMenu;
-import org.openstreetmap.josm.gui.MapFrame;
-import org.openstreetmap.josm.gui.MapView;
 import org.openstreetmap.josm.gui.NavigatableComponent;
 import org.openstreetmap.josm.gui.layer.Layer;
-import org.openstreetmap.josm.gui.layer.MapViewPaintable;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.gui.util.GuiHelper;
-import org.openstreetmap.josm.gui.util.KeyPressReleaseListener;
-import org.openstreetmap.josm.gui.util.ModifierListener;
 import org.openstreetmap.josm.gui.widgets.PopupMenuLauncher;
 import org.openstreetmap.josm.tools.Geometry;
-import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Pair;
-import org.openstreetmap.josm.tools.Shortcut;
 import org.openstreetmap.josm.tools.Utils;
-import org.openstreetmap.josm.tools.I18n;
 
-import utils.TimedKeyReleaseListener;
-
-public  class WayGeneralizationAction extends MapMode implements MapViewPaintable, SelectionChangedListener, KeyPressReleaseListener, ModifierListener{
+public  class DrawSplineAction extends MapMode implements MapViewPaintable, SelectionChangedListener, KeyPressReleaseListener, ModifierListener{
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = -5953561850680258070L;
-	private static final MapFrame MapFrame = null;
 	private final Cursor cursorJoinNode;
     private final Cursor cursorJoinWay;
 
@@ -163,7 +120,7 @@ public  class WayGeneralizationAction extends MapMode implements MapViewPaintabl
 	private static MapFrame mapFrame;
 	private static Node n1;
 
-	public WayGeneralizationAction(MapFrame mapFrame)
+	public DrawSplineAction(MapFrame mapFrame)
 	{  
 //		super(tr("INSIDE ShapePanel() INSIDE"), "shapePanelButton.png",
 //
@@ -430,7 +387,7 @@ public  class WayGeneralizationAction extends MapMode implements MapViewPaintabl
     
     
     public int index=0;
-    private boolean addNodes(NodePos start, NodePos end, Way way,
+    /*private boolean addNodes(NodePos start, NodePos end, Way way,
             Set<Node> nodes, boolean hasFirst) {
         if (way.isClosed() || (start.node != way.getNode(0) && start.node != way.getNode(way.getNodesCount() - 1))) {
             hasFirst = hasFirst || start.node == way.getNode(0);
@@ -444,7 +401,7 @@ public  class WayGeneralizationAction extends MapMode implements MapViewPaintabl
             }
         }
         return hasFirst;
-    }
+    }*/
 
     /**
      * If user clicked with the left button, add a node at the current mouse

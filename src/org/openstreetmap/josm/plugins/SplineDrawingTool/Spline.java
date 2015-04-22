@@ -1,50 +1,27 @@
 /**
  * 
  */
-package org.openstreetmap.josm.plugins.WayGeneralization;
+package org.openstreetmap.josm.plugins.SplineDrawingTool;
 
 //import static org.openstreetmap.josm.plugins.contourmerge.util.Assert.checkArgNotNull;
 
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.geom.AffineTransform;
-import java.awt.geom.Line2D;
-import java.awt.geom.Path2D;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.logging.Logger;
-
-import javax.swing.JPanel;
 
 import org.openstreetmap.josm.Main;
-import org.openstreetmap.josm.command.AddCommand;
-import org.openstreetmap.josm.command.AddPrimitivesCommand;
-import org.openstreetmap.josm.command.ChangeCommand;
 import org.openstreetmap.josm.command.Command;
-import org.openstreetmap.josm.command.DeleteCommand;
-import org.openstreetmap.josm.command.SequenceCommand;
-import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.data.osm.Way;
-import org.openstreetmap.josm.gui.MapView;
-import org.openstreetmap.josm.gui.layer.MapViewPaintable;
-//import org.openstreetmap.josm.plugins.contourmerge.ContourMergeModel;
-//import org.openstreetmap.josm.plugins.contourmerge.ContourMergePlugin;
-//import org.openstreetmap.josm.plugins.contourmerge.WaySlice;
-import org.openstreetmap.josm.tools.Geometry;
 
 /**
  * <p><strong>ContourMergeView</strong> renders the {@link ContourMergeModel} for the 
  * currently active data layer.</p>
  *
  */
-public class WayGeneralizationAlgorithm extends JPanel{
+public class Spline {
 	public static List<Command> cmm=new ArrayList<>();
 	
 	public  DataSet getDataSet()

@@ -11,7 +11,7 @@
 ** Call "ant help" to get possible build targets.
 **
 -->
-<project name="Spline drawing tool" default="dist" basedir=".">
+<project name="spline_drawing_tool" default="dist" basedir=".">
 
     <!-- enter the SVN commit message -->
     <property name="commit.message" value="Commit message"/>
@@ -26,15 +26,16 @@
     -->
     <property name="plugin.author" value="Bularca Sergiu"/>
     <property name="plugin.class" value="org.openstreetmap.josm.plugins.WayGeneralization.WayGeneralizationPlugin"/>
-    <property name="plugin.description" value="Allows to edit traffic information and export it to the urban mobility simulator SUMO"/>
+    <property name="plugin.description" value="Allows draw splines"/>
     <property name="plugin.icon" value="images/dialogs/spline2.png"/>
+
     <!-- <property name="plugin.link" value="..."/>-->
     <!--<property name="plugin.early" value="..."/>-->
     <!--<property name="plugin.requires" value="..."/>-->
     <!--<property name="plugin.stage" value="..."/>-->
     
-	<property name="josm" location="../../core/dist/josm-custom.jar"/>
-	<property name="plugin.dist.dir" value="../../dist"/>
+    <property name="josm" location="../../core/dist/josm-custom.jar"/>
+    <property name="plugin.dist.dir" value="../../dist"/>
 	
     <!-- ** include targets that all plugins have in common ** -->
     <import file="../build-common.xml"/>

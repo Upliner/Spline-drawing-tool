@@ -1,18 +1,10 @@
 /**
  * 
  */
-package org.openstreetmap.josm.plugins.WayGeneralization;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
-import javax.swing.JOptionPane;
+package org.openstreetmap.josm.plugins.SplineDrawingTool;
 
 import org.openstreetmap.josm.Main;
-import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
-import org.openstreetmap.josm.data.osm.Way;
 
 public class Point {
 
