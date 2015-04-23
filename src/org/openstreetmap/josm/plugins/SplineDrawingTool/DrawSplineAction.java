@@ -46,6 +46,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+
 import javax.swing.AbstractAction;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenuItem;
@@ -70,6 +71,7 @@ import org.openstreetmap.josm.tools.Geometry;
 import org.openstreetmap.josm.tools.Pair;
 import org.openstreetmap.josm.tools.Utils;
 
+@SuppressWarnings("serial")
 public  class DrawSplineAction extends MapMode implements MapViewPaintable, SelectionChangedListener, KeyPressReleaseListener, ModifierListener{
 	/**
 	 * 
@@ -117,38 +119,17 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Sele
     private static final BasicStroke BASIC_STROKE = new BasicStroke(1);
 
     private static int snapToIntersectionThreshold;
-	private static MapFrame mapFrame;
 	private static Node n1;
 
 	public DrawSplineAction(MapFrame mapFrame)
 	{  
-//		super(tr("INSIDE ShapePanel() INSIDE"), "shapePanelButton.png",
-//
-//				tr("Shape mode control panel"), null, 70);
-
-//	  super(I18n.tr("Way Generalization", new Object[0]), "images/dialogs/logo-sumo.png", 
-//	    I18n.tr("Remove redundant points from ways,based an threshold distance between point and ideal way", new Object[0]), 
-//	    Shortcut.registerShortcut("mode:Remove redundant points from ways,railways,rivers,etc.", tr("Mode: {0}", tr("Remove redundant points")),
-//		  KeyEvent.VK_F, Shortcut.SHIFT), true,"Remove redundant points",true);
-
-//	  super(tr("Way Generalization"), "Way Generalization", tr("Browse map with left button"),
-//	            Shortcut.registerShortcut("Way Generalization", tr("Mode: {0}", tr("Browse map with left button")),
-//	                KeyEvent.VK_T, Shortcut.DIRECT),
-//	            mapFrame, Cursor.getPredefinedCursor(Cursor.)
-//	            );
-//	        MapFrame.addMapModeChangeListener(this);
 		super(
-				tr("Way Generalization"),  // name
+				tr("Spline drawing"),  // name
 				"spline2.png",       // icon name 
 				tr("Draw an spline curve"), // tooltip 
-				mapFrame,
-				Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR)
+				mapFrame, getCursor()
 		);
 		
-//		super(tr("Draw"), "node/autonode", tr("Draw nodes"),
-//                Shortcut.registerShortcut("mapmode:draw", tr("Mode: {0}", tr("Draw")), KeyEvent.VK_A, Shortcut.DIRECT),
-//                mapFrame, ImageProvider.getCursor("crosshair", null));
-
         snappingShortcut = Shortcut.registerShortcut("mapmode:drawanglesnapping",
                 tr("Mode: Draw Angle snapping"), KeyEvent.CHAR_UNDEFINED, Shortcut.NONE);
         snapChangeAction = new SnapChangeAction();
@@ -166,11 +147,14 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Sele
         snapHelper.init();
 	}
 
-
-
-
-
-
+    private static Cursor getCursor() {
+        try {
+            return ImageProvider.getCursor("crosshair", "spline");
+        } catch (Exception e) {
+            Main.error(e);
+        }
+        return Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR);
+    }
 
     private JCheckBoxMenuItem addMenuItem() {
         int n=Main.main.menu.editMenu.getItemCount();
@@ -387,21 +371,6 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Sele
     
     
     public int index=0;
-    /*private boolean addNodes(NodePos start, NodePos end, Way way,
-            Set<Node> nodes, boolean hasFirst) {
-        if (way.isClosed() || (start.node != way.getNode(0) && start.node != way.getNode(way.getNodesCount() - 1))) {
-            hasFirst = hasFirst || start.node == way.getNode(0);
-            nodes.add(start.node);
-        }
-        if (way.isClosed() || (end.node != way.getNode(0) && end.node != way.getNode(way.getNodesCount() - 1))) {
-            if (hasFirst && (end.node == way.getNode(way.getNodesCount() - 1))) {
-                nodes.remove(way.getNode(0));
-            } else {
-                nodes.add(end.node);
-            }
-        }
-        return hasFirst;
-    }*/
 
     /**
      * If user clicked with the left button, add a node at the current mouse
@@ -866,314 +835,10 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Sele
         System.out.println(mousePos);
         
         
-////        double pp2x=mousePos.x;
-////        double pp2y=mousePos.y;
-////        
-////        
-////        Node nnew=new Node(new LatLon(pp2x, pp2y));
         if(index>0){
         	 Node nl = Main.map.mapView.getNearestNode(mousePos, OsmPrimitive.isSelectablePredicate);
              System.out.println(nl);
         }
-       
-//        
-//        ///
-//
-//        
-//        /////mouse released
-//        if(index%2==0){
-//        	DataSet ds = getCurrentDataSet();
-//            Collection<OsmPrimitive> selection = new ArrayList<>(ds.getSelected());
-//            Collection<Command> cmds = new LinkedList<>();
-//            Collection<OsmPrimitive> newSelection = new LinkedList<>(ds.getSelected());
-//            
-//            List<Node> vect = new ArrayList<>();
-//           
-//            List<Way> reuseWays = new ArrayList<>(),
-//                    replacedWays = new ArrayList<>();
-//            boolean newNode = false;
-//            Node n = null;
-//            Node n0=null;
-//            n = Main.map.mapView.getNearestNode(mousePos, OsmPrimitive.isSelectablePredicate);
-//            
-//            System.out.println(n);
-//            System.out.println("NODEn="+n);
-//            if (ctrl) {
-//                Iterator<Way> it = getCurrentDataSet().getSelectedWays().iterator();
-//                if (it.hasNext()) {
-//                    // ctrl-click on node of selected way = reuse node despite of ctrl
-//                    if (!it.next().containsNode(n)) n = null;
-//                } else {
-//                    n=null; // ctrl-click + no selected way = new node
-//                }
-//            }
-//
-//            if (n != null && !snapHelper.isActive()) {
-//                // user clicked on node
-//                if (selection.isEmpty() || wayIsFinished) {
-//                    // select the clicked node and do nothing else
-//                    // (this is just a convenience option so that people don't
-//                    // have to switch modes)
-//
-//                    getCurrentDataSet().setSelected(n);
-//                    // If we extend/continue an existing way, select it already now to make it obvious
-//                    Way continueFrom = getWayForNode(n);
-//                    if (continueFrom != null) {
-//                        getCurrentDataSet().addSelected(continueFrom);
-//                    }
-//
-//                    // The user explicitly selected a node, so let him continue drawing
-//                    wayIsFinished = false;
-//                    return;
-//                }
-//            } else {
-//                EastNorth newEN;
-//                if (n!=null) {
-//                    EastNorth foundPoint = n.getEastNorth();
-//                    // project found node to snapping line
-//                    newEN = snapHelper.getSnapPoint(foundPoint);
-//                    // do not add new node if there is some node within snapping distance
-//                    double tolerance = Main.map.mapView.getDist100Pixel() * toleranceMultiplier;
-//                    if (foundPoint.distance(newEN) > tolerance) {
-//                        n = new Node(newEN); // point != projected, so we create new node
-//                        newNode = true;
-//                        System.out.println("NODEn1:)="+n);
-//                    }
-//                } else { // n==null, no node found in clicked area
-//                    EastNorth mouseEN = Main.map.mapView.getEastNorth(e.getX(), e.getY());
-//                    newEN = snapHelper.isSnapOn() ? snapHelper.getSnapPoint(mouseEN) : mouseEN;
-//                    n = new Node(newEN); //create node at clicked point
-//                    newNode = true;
-//                    System.out.println("NODEn="+n);
-//                }
-//                snapHelper.unsetFixedMode();
-//            }
-//            
-//            if (newNode) {
-//                if (n.getCoor().isOutSideWorld()) {
-//                    JOptionPane.showMessageDialog(
-//                            Main.parent,
-//                            tr("Cannot add a node outside of the world."),
-//                            tr("Warning"),
-//                            JOptionPane.WARNING_MESSAGE
-//                            );
-//                    return;
-//                }
-//                
-//                if(index%2==0){
-//                	cmds.add(new AddCommand(n));
-//                }
-//                if (!ctrl) {
-//                    // Insert the node into all the nearby way segments
-//                    List<WaySegment> wss = Main.map.mapView.getNearestWaySegments(
-//                            Main.map.mapView.getPoint(n), OsmPrimitive.isSelectablePredicate);
-//                    if (snapHelper.isActive()) {
-//                        tryToMoveNodeOnIntersection(wss,n);
-//                    }
-//                    insertNodeIntoAllNearbySegments(wss, n, newSelection, cmds, replacedWays, reuseWays);
-//                }
-//            }
-//            // now "n" is newly created or reused node that shoud be added to some way
-//
-//            // This part decides whether or not a "segment" (i.e. a connection) is made to an
-//            // existing node.
-//
-//            // For a connection to be made, the user must either have a node selected (connection
-//            // is made to that node), or he must have a way selected *and* one of the endpoints
-//            // of that way must be the last used node (connection is made to last used node), or
-//            // he must have a way and a node selected (connection is made to the selected node).
-//
-//            // If the above does not apply, the selection is cleared and a new try is started
-//
-//            boolean extendedWay = false;
-//            boolean wayIsFinishedTemp = wayIsFinished;
-//            wayIsFinished = false;
-//
-//            // don't draw lines if shift is held
-//            if (!selection.isEmpty() && !shift) {
-//                Node selectedNode = null;
-//                Way selectedWay = null;
-//
-//                for (OsmPrimitive p : selection) {
-//                    if (p instanceof Node) {
-//                        if (selectedNode != null) {
-//                            // Too many nodes selected to do something useful
-//                            tryAgain(e);
-//                            return;
-//                        }
-//                        selectedNode = (Node) p;
-//                    } else if (p instanceof Way) {
-//                        if (selectedWay != null) {
-//                            // Too many ways selected to do something useful
-//                            tryAgain(e);
-//                            return;
-//                        }
-//                        selectedWay = (Way) p;
-//                    }
-//                }
-//             
-//
-//                // the node from which we make a connection
-//               
-//                n0 = findNodeToContinueFrom(selectedNode, selectedWay);
-//                
-//                // We have a selection but it isn't suitable. Try again.
-//                if(n0 == null) {
-//                    tryAgain(e);
-//                    return;
-//                }
-//                if(!wayIsFinishedTemp){
-//                    if(isSelfContainedWay(selectedWay, n0, n))
-//                        return;
-//
-//                    // User clicked last node again, finish way
-//                    if(n0 == n) {
-//                        finishDrawing();
-//                        index=0;
-//                        return;
-//                    }
-//                    
-//                    
-//
-//                    // Ok we know now that we'll insert a line segment, but will it connect to an
-//                    // existing way or make a new way of its own? The "alt" modifier means that the
-//                    // user wants a new way.
-//                    Way way = alt ? null : (selectedWay != null) ? selectedWay : getWayForNode(n0);
-//                    Way wayToSelect;
-//
-//                    // Don't allow creation of self-overlapping ways
-//                    if(way != null) {
-//                        int nodeCount=0;
-//                        for (Node p : way.getNodes())
-//                            if(p.equals(n0)) {
-//                                nodeCount++;
-//                            }
-//                        if(nodeCount > 1) {
-//                            way = null;
-//                        }
-//                    }
-//                    
-//                    
-//                    if(index>0 && index%2!=0){
-////                    	Test tes=new Test();
-////                    	vect=tes.GetNodes(index, way, n0, n, cmds).getKey();
-////                    	n1=tes.GetNodes(index, way, n0, n, cmds).getValue();
-////                    	System.out.println("VEEEEE="+vect);
-////                    	System.out.println("\nn1="+n1);
-////                    	for(Node nn:vect){
-////           					cmds.add(new AddCommand(nn));
-////           				}
-//                    }
-//                   
-//                    
-//                    if (way == null) {
-//                        way = new Way();
-//                        way.addNode(n0);
-//                        cmds.add(new AddCommand(way));
-//                        wayToSelect = way;
-//                    } else {
-//                        int i;
-//                        if ((i = replacedWays.indexOf(way)) != -1) {
-//                            way = reuseWays.get(i);
-//                            wayToSelect = way;
-//                        } else {
-//                            wayToSelect = way;
-//                            Way wnew = new Way(way);
-//                            cmds.add(new ChangeCommand(way, wnew));
-//                            way = wnew;
-//                        }
-//                    }
-//                    
-//                    
-//                    // Connected to a node that's already in the way
-//                    if(way.containsNode(n)) {
-//                        wayIsFinished = true;
-//                        selection.clear();
-//                        index=0;
-//                    }
-//                    
-//                    // Add new node to way
-//                    if (way.getNode(way.getNodesCount() - 1) == n0) {
-//                    	if(index%2!=0){
-//                    		for(Node nn:vect){
-//              					way.addNode(way.getNodesCount() -1,nn);
-//             				}
-//                    		System.out.println("wayNERRRR="+way);
-//                    		System.out.println("NUmmm="+n);
-//                    		System.out.println("wayRRRR="+way);
-//                    	}
-//                    	else{
-//                    		way.addNode(n);;
-//                    	}
-//                    	index++;
-//                    } 
-//                    else {
-//                        way.addNode(0, n);
-//                        index++;
-//                    }
-//                    extendedWay = true;
-//                    newSelection.clear();
-//                    newSelection.add(wayToSelect);
-//                }
-//            }
-//
-//            String title;
-//            if (!extendedWay
-//            		){
-//                if (!newNode)
-//                    return; // We didn't do anything.
-//                else if (reuseWays.isEmpty()) {
-//                    title = tr("Add node");
-//                } else {
-//                    title = tr("Add node into way");
-//                    for (Way w : reuseWays) {
-//                        newSelection.remove(w);
-//                    }
-//                }
-//                newSelection.clear();
-//                newSelection.add(n);
-//                
-//            } else if (!newNode) {
-//                title = tr("Connect existing way to node");
-//            } else if (reuseWays.isEmpty()) {
-//                title = tr("Add a new node to an existing way");
-//            } else {
-//                title = tr("Add node into way and connect");
-//            }
-//            
-//
-//            Command c = new SequenceCommand(title, cmds);
-//            
-//            Main.main.undoRedo.add(c);
-//            if(wayIsFinished){
-//            	index=0;
-//            }
-//            if(!wayIsFinished  ) {
-//            	System.out.println("INDEXXX="+index);
-//            	if(index <1 ){
-//            		lastUsedNode = n;
-//            	}
-//            	else{
-//            		if(index%2!=0){
-//            			lastUsedNode=n;
-//            			System.out.println("NODEn="+n0);
-//            		}
-//            		else{
-//            			lastUsedNode=n0;
-//            			System.out.println("NODELassss="+n);
-//            			
-//            		}
-//            	}
-//            }
-//        }
-//        
-        
-        ///
-        
-        
-        
-        
-        
         
         if (snapHelper.isSnapOn() && ctrl)
             tryToSetBaseSegmentForAngleSnap();
@@ -2058,7 +1723,7 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Sele
             customBaseHeading=hdg;
         }
 
-        private void nextSnapMode() {
+        /*private void nextSnapMode() {
             if (snapOn) {
                 // turn off snapping if we are in fixed mode or no actile snapping line exist
                 if (fixed || !active) { snapOn=false; unsetFixedMode(); } else {
@@ -2070,7 +1735,7 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Sele
             }
             checkBox.setState(snapOn);
             customBaseHeading=-1;
-        }
+        }*/
 
         private void enableSnapping() {
             snapOn = true;
@@ -2139,7 +1804,7 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Sele
             }
         }
 
-        MouseListener anglePopupListener = new PopupMenuLauncher( new JPopupMenu() {
+		MouseListener anglePopupListener = new PopupMenuLauncher( new JPopupMenu() {
             JCheckBoxMenuItem repeatedCb = new JCheckBoxMenuItem(new AbstractAction(tr("Toggle snapping by {0}", getShortcut().getKeyText())){
                 @Override public void actionPerformed(ActionEvent e) {
                     boolean sel=((JCheckBoxMenuItem) e.getSource()).getState();
@@ -2227,25 +1892,5 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Sele
             }
         }
     }
-    
-    private static class NodePos {
-        Node node;
-        int pos;
-        int opositPos;
-
-        NodePos(Node n, int p, int op) {
-            node = n;
-            pos = p;
-            opositPos = op;
-        }
-
-        @Override
-        public String toString() {
-            return "NodePos: " + pos + ", " + opositPos + ", " + node;
-        }
-    }
-    
-
-	
 }
 
