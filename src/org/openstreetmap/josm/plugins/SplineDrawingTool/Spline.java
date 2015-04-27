@@ -5,14 +5,19 @@ package org.openstreetmap.josm.plugins.SplineDrawingTool;
 
 //import static org.openstreetmap.josm.plugins.contourmerge.util.Assert.checkArgNotNull;
 
+import static org.openstreetmap.josm.tools.I18n.tr;
+
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.Point;
 import java.awt.geom.GeneralPath;
 import java.awt.geom.Point2D;
-import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+
+import javax.swing.JOptionPane;
 
 import org.openstreetmap.josm.Main;
 import org.openstreetmap.josm.command.AddCommand;
@@ -27,32 +32,41 @@ import org.openstreetmap.josm.gui.NavigatableComponent;
 public class Spline {
 	public static class Segment {
 		public Node point; // Endpoint
-		public EastNorth ca, cb; // Control points
+		public EastNorth cprev, cnext; // Relative offsets of control points
+		public Segment(Node point) {
+			this.point = point;
+			cprev = new EastNorth(0, 0);
+			cnext = new EastNorth(0, 0);
+		}
 	}
-	public Node firstPoint;
-	public EastNorth firstControl;
-	public final List<Segment> segments = new ArrayList<Segment>();
-    public void paint(Graphics2D g, MapView mv, Color curveColor, Color ctlColor) {
-    	if (firstPoint == null || segments.isEmpty())
+	public final LinkedList<Segment> segments = new LinkedList<Segment>();
+    public void paint(Graphics2D g, MapView mv, Color curveColor, Color ctlColor, Point helperEndpoint) {
+    	if (segments.isEmpty())
     		return;
     	final GeneralPath curv = new GeneralPath();
     	final GeneralPath ctl = new GeneralPath();
-    	Point2D pt = mv.getPoint2D(firstPoint);
-    	EastNorth en = firstPoint.getEastNorth();
-    	curv.moveTo(pt.getX(), pt.getY());
-    	ctl.moveTo(pt.getX(), pt.getY());
-    	for (Segment segm : segments) {
-    		Point2D ca = mv.getPoint2D(en.add(segm.ca));
-    		pt = mv.getPoint2D(segm.point);
-    		en = segm.point.getEastNorth();
-    		Point2D cb = mv.getPoint2D(en.add(segm.cb));
 
-    		curv.curveTo(ca.getX(), ca.getY(), cb.getX(), cb.getY(), pt.getX(), pt.getY());
-    		ctl.lineTo(ca.getX(), ca.getY());
-    		ctl.moveTo(cb.getX(), cb.getY());
+    	Point2D cbPrev = null;
+    	for (Segment segm : segments) {
+        	Point2D pt = mv.getPoint2D(segm.point);
+        	EastNorth en = segm.point.getEastNorth();
+
+    		Point2D ca = mv.getPoint2D(en.add(segm.cprev));
+    		Point2D cb = mv.getPoint2D(en.add(segm.cnext));
+
+    		ctl.moveTo(ca.getX(), ca.getY());
     		ctl.lineTo(pt.getX(), pt.getY());
+    		ctl.lineTo(cb.getX(), cb.getY());
+
+    		if (cbPrev == null)
+    			curv.moveTo(pt.getX(), pt.getY());
+    		else 
+    		    curv.curveTo(cbPrev.getX(), cbPrev.getY(), ca.getX(), ca.getY(), pt.getX(), pt.getY());
+    		cbPrev = cb;
     	}
-    	
+    	if (helperEndpoint != null) {
+		    curv.curveTo(cbPrev.getX(), cbPrev.getY(), helperEndpoint.getX(), helperEndpoint.getY(), helperEndpoint.getX(), helperEndpoint.getY());
+    	}
         g.setStroke(new BasicStroke(3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         g.setColor(curveColor);
     	g.draw(curv);
@@ -60,67 +74,42 @@ public class Spline {
         g.setColor(ctlColor);
         g.draw(ctl);
 	}
-	public enum SegmentPoint { ENDPOINT, CONTROL_A, CONTROL_B }; 
-    public class PointHandle {
-    	public final Integer segmIndex;
-    	public final Node prevNode;
+	public enum SegmentPoint { ENDPOINT, CONTROL_PREV, CONTROL_NEXT }; 
+    public static class PointHandle {
     	public final Segment segm;
     	public final SegmentPoint point;
-    	public PointHandle(int idx, SegmentPoint point) {
+    	public PointHandle(Segment segm, SegmentPoint point) {
     		if (point == null)
     			throw new IllegalArgumentException("Invalid SegmentPoint passed for PointHandle contructor");
-    		if (idx < -2)
-    			throw new IllegalArgumentException("Invalid idx passed for PointHandle contructor");
-    		if (idx == -1 && point != SegmentPoint.ENDPOINT)
-    			throw new IllegalArgumentException("SegmentPoint must be ENDPOINT for first point");
-    		segmIndex = idx;
+    		this.segm = segm;
     		this.point = point;
-    		if (idx == -1) {
-    			prevNode = null;
-    			segm = null;
-    		} else {
-    		    if (idx == 0)
-                    prevNode = firstPoint;
-    		    else
-                    prevNode = segments.get(idx-1).point;
-    		    segm = segments.get(idx);
-    		}
     	}
     	public EastNorth getPoint() {
-    		if (segmIndex == -1)
-    			return firstPoint.getEastNorth();
+    		EastNorth en = segm.point.getEastNorth();
     		switch (point) {
-    		case ENDPOINT: return segm.point.getEastNorth(); 
-    		case CONTROL_A: return prevNode.getEastNorth().add(segm.ca); 
-    		case CONTROL_B: return segm.point.getEastNorth().add(segm.cb); 
+    		case ENDPOINT: return en; 
+    		case CONTROL_PREV: return en.add(segm.cprev); 
+    		case CONTROL_NEXT: return en.add(segm.cnext); 
     		}
     		throw new AssertionError();
     	}
     	public void movePoint(EastNorth en) {
-    		if (segmIndex == -1) {
-    			 firstPoint.setEastNorth(en);
-    			 return;
-    		}
     		switch (point) {
     		case ENDPOINT: segm.point.setEastNorth(en); return;
-    		case CONTROL_A: segm.ca = en.sub(prevNode.getEastNorth()); return;
-    		case CONTROL_B: segm.cb = en.sub(segm.point.getEastNorth()); return;
+    		case CONTROL_PREV: segm.cprev = segm.point.getEastNorth().sub(en); return;
+    		case CONTROL_NEXT: segm.cnext = segm.point.getEastNorth().sub(en); return;
     		}
     		throw new AssertionError();
     	}
     }
     public PointHandle getNearestPoint(MapView mv, Point2D point) {
     	PointHandle bestPH = null;
-    	double bestDistSq = 3 * NavigatableComponent.PROP_SNAP_DISTANCE.get();
-    	double distSq = point.distanceSq(mv.getPoint2D(firstPoint));
-		if (distSq < bestDistSq) {
-			bestPH = new PointHandle(-1, SegmentPoint.ENDPOINT);
-			bestDistSq = distSq;
-		}
-    	for (int i = 0; i < segments.size(); i++) {
+    	double bestDistSq =  NavigatableComponent.PROP_SNAP_DISTANCE.get();
+    	bestDistSq = bestDistSq * bestDistSq; 
+    	for (Segment segm : segments) {
     		for(SegmentPoint sp : SegmentPoint.values()) {
-    			PointHandle ph = new PointHandle(i, sp);
-    			distSq = point.distanceSq(mv.getPoint2D(ph.getPoint()));
+    			PointHandle ph = new PointHandle(segm, sp);
+    			double distSq = point.distanceSq(mv.getPoint2D(ph.getPoint()));
     			if (distSq < bestDistSq) {
     				bestPH = ph;
     				bestDistSq = distSq;
@@ -130,32 +119,38 @@ public class Spline {
     	return bestPH;
     }
     public void finishSpline(int detail) {
-    	if (firstPoint == null) {
-    		segments.clear();
+    	if (segments.isEmpty())
     		return;
-    	}
     	Way w = new Way();
     	List<Command> cmds = new LinkedList<>();
-    	w.addNode(firstPoint);
-    	EastNorth a = firstPoint.getEastNorth();
-    	for (Segment segm : segments) {
-    		EastNorth ca = a.add(segm.ca);
-    		EastNorth cb = segm.point.getEastNorth().add(segm.cb);
+    	Iterator<Segment> it = segments.iterator();
+    	Segment segm = it.next();
+    	w.addNode(segm.point);
+    	EastNorth a = segm.point.getEastNorth();
+		EastNorth ca = a.add(segm.cnext);
+    	while (it.hasNext()) {
+    		segm = it.next();
     		EastNorth b = segm.point.getEastNorth();
+    		EastNorth cb = b.add(segm.cprev);
     		for (int i = 1; i < detail; i++) {
     			Node n = new Node(Main.getProjection().eastNorth2latlon(cubicBezier(a, ca, cb, b, (double)i / detail)));
+    			if (n.getCoor().isOutSideWorld()) {
+                    JOptionPane.showMessageDialog(Main.parent,
+                            tr("Spline goes outside world."));
+                    return;
+                }
     			cmds.add(new AddCommand(n));
     			w.addNode(n);
     		}
     		w.addNode(segm.point);
     		a = b;
+    		ca = a.add(segm.cnext);
     	}
     	if (!cmds.isEmpty()) {
     		cmds.add(new AddCommand(w));
     		Main.main.undoRedo.add(new SequenceCommand("Draw a spline", cmds));
     	}
     	segments.clear();
-        firstPoint = null;
     }
 	  
 	  /**
