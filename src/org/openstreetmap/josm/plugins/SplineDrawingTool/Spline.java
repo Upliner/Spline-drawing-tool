@@ -6,6 +6,7 @@ package org.openstreetmap.josm.plugins.SplineDrawingTool;
 //import static org.openstreetmap.josm.plugins.contourmerge.util.Assert.checkArgNotNull;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
+import static org.openstreetmap.josm.plugins.SplineDrawingTool.SplineDrawingPlugin.EPSILON;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -132,16 +133,17 @@ public class Spline {
     		segm = it.next();
     		EastNorth b = segm.point.getEastNorth();
     		EastNorth cb = b.add(segm.cprev);
-    		for (int i = 1; i < detail; i++) {
-    			Node n = new Node(Main.getProjection().eastNorth2latlon(cubicBezier(a, ca, cb, b, (double)i / detail)));
-    			if (n.getCoor().isOutSideWorld()) {
-                    JOptionPane.showMessageDialog(Main.parent,
-                            tr("Spline goes outside world."));
-                    return;
-                }
-    			cmds.add(new AddCommand(n));
-    			w.addNode(n);
-    		}
+    		if (!a.equalsEpsilon(ca, EPSILON) && !b.equalsEpsilon(cb, EPSILON))
+                for (int i = 1; i < detail; i++) {
+                    Node n = new Node(Main.getProjection().eastNorth2latlon(cubicBezier(a, ca, cb, b, (double)i / detail)));
+    			    if (n.getCoor().isOutSideWorld()) {
+                        JOptionPane.showMessageDialog(Main.parent,
+                                tr("Spline goes outside world."));
+                        return;
+                    }
+    			    cmds.add(new AddCommand(n));
+    			    w.addNode(n);
+    		    }
     		w.addNode(segm.point);
     		a = b;
     		ca = a.add(segm.cnext);

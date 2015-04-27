@@ -1,6 +1,7 @@
 package org.openstreetmap.josm.plugins.SplineDrawingTool;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
+import static org.openstreetmap.josm.plugins.SplineDrawingTool.SplineDrawingPlugin.EPSILON;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -284,6 +285,7 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Sele
     
     
     public int index=0;
+    boolean lockCounterpart;
     Spline spl = new Spline();
     @Override
     public void mousePressed(MouseEvent e) {
@@ -299,8 +301,21 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Sele
     		return;
     	}
     	ph = spl.getNearestPoint(Main.map.mapView, e.getPoint());
-    	if (ph != null)
+    	if (ph != null) {
+    		if (ctrl) {
+    			if (ph.point == SegmentPoint.ENDPOINT) {
+    			    ph = new PointHandle(ph.segm, SegmentPoint.CONTROL_NEXT);
+                    lockCounterpart = true;
+    		    } else
+    		    	lockCounterpart = false;
+    		} else {
+    			lockCounterpart = (ph.point != SegmentPoint.ENDPOINT
+    					&& Math.abs(ph.segm.cprev.east()+ph.segm.cnext.east()) < EPSILON
+    					&& Math.abs(ph.segm.cprev.north()+ph.segm.cnext.north()) < EPSILON
+    					); 
+    		}
     		return;
+    	}
     	Node n = null;
     	if (!ctrl)
     	    n = Main.map.mapView.getNearestNode(e.getPoint(), OsmPrimitive.isUsablePredicate);
@@ -309,6 +324,8 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Sele
             Main.main.undoRedo.add(new AddCommand(n));
         }
     	spl.segments.add(new Spline.Segment(n));
+        ph = new PointHandle(spl.segments.getLast(), SegmentPoint.CONTROL_NEXT);
+        lockCounterpart = true;
         Main.map.repaint();
     }
 
@@ -327,10 +344,12 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Sele
             return;
         if (ph != null) {
         	ph.movePoint(Main.map.mapView.getEastNorth(e.getX(), e.getY()));
-        } else {
-            Spline.Segment segm = spl.segments.getLast();
-            segm.cprev = Main.map.mapView.getEastNorth(e.getX(), e.getY()).sub(segm.point.getEastNorth());
-            segm.cnext = segm.cprev.sub(new EastNorth(0, 0));
+        	if (lockCounterpart) {
+        		if (ph.point == SegmentPoint.CONTROL_NEXT)
+        			ph.segm.cprev = ph.segm.cnext.sub(new EastNorth(0,0));
+        		else if (ph.point == SegmentPoint.CONTROL_PREV)
+        			ph.segm.cnext = ph.segm.cprev.sub(new EastNorth(0,0));
+        	}
         }
         Main.map.repaint();
     }

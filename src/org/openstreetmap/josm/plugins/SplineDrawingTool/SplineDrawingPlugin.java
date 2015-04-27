@@ -11,7 +11,7 @@ import org.openstreetmap.josm.plugins.PluginInformation;
  * plugin.
  */
 public class SplineDrawingPlugin extends Plugin{
-	
+	public static final double EPSILON = 0.0000000000001;
     public SplineDrawingPlugin(PluginInformation info) {
         super(info);
     }
