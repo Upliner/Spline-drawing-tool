@@ -14,6 +14,8 @@ import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.geom.GeneralPath;
 import java.awt.geom.Point2D;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -26,11 +28,15 @@ import org.openstreetmap.josm.command.Command;
 import org.openstreetmap.josm.command.SequenceCommand;
 import org.openstreetmap.josm.data.coor.EastNorth;
 import org.openstreetmap.josm.data.osm.Node;
+import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.data.osm.Way;
+import org.openstreetmap.josm.data.preferences.IntegerProperty;
 import org.openstreetmap.josm.gui.MapView;
 import org.openstreetmap.josm.gui.NavigatableComponent;
+import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 
 public class Spline {
+    public static IntegerProperty PROP_SPLINEPOINTS = new IntegerProperty("edit.spline.num_points", 10);
     public static class Segment {
         public Node point; // Endpoint
         public EastNorth cprev, cnext; // Relative offsets of control points
@@ -41,6 +47,10 @@ public class Spline {
         }
     }
     public final LinkedList<Segment> segments = new LinkedList<Segment>();
+    public Spline() {
+    }
+    public void removeListener(OsmDataLayer l) {
+    }
     public void paint(Graphics2D g, MapView mv, Color curveColor, Color ctlColor, Point helperEndpoint) {
         if (segments.isEmpty())
             return;
@@ -119,7 +129,8 @@ public class Spline {
         }
         return bestPH;
     }
-    public void finishSpline(int detail) {
+    public void finishSpline() {
+    	int detail = PROP_SPLINEPOINTS.get();
         if (segments.isEmpty())
             return;
         Way w = new Way();
@@ -133,7 +144,7 @@ public class Spline {
             segm = it.next();
             EastNorth b = segm.point.getEastNorth();
             EastNorth cb = b.add(segm.cprev);
-            if (!a.equalsEpsilon(ca, EPSILON) && !b.equalsEpsilon(cb, EPSILON))
+            if (!a.equalsEpsilon(ca, EPSILON) || !b.equalsEpsilon(cb, EPSILON))
                 for (int i = 1; i < detail; i++) {
                     Node n = new Node(Main.getProjection().eastNorth2latlon(cubicBezier(a, ca, cb, b, (double)i / detail)));
                     if (n.getCoor().isOutSideWorld()) {
@@ -150,7 +161,7 @@ public class Spline {
         }
         if (!cmds.isEmpty()) {
             cmds.add(new AddCommand(w));
-            Main.main.undoRedo.add(new SequenceCommand("Draw a spline", cmds));
+            Main.main.undoRedo.add(new FinishSplineCommand(cmds));
         }
         segments.clear();
     }
@@ -172,22 +183,82 @@ public class Spline {
           return Math.pow(1-t, 3) * a0 + 3* Math.pow(1-t, 2) * t * a1 + 3*(1-t) * Math.pow(t, 2) * a2 + Math.pow(t, 3) * a3;
 
       }
+      
 
       public class AddSplineNodeCommand extends AddCommand {
           Segment segm;
-          public AddSplineNodeCommand(Segment segm) {
+          boolean existing;
+          public AddSplineNodeCommand(Segment segm, boolean existing) {
               super(segm.point);
               this.segm = segm;
+              this.existing = existing;
           }
           @Override
           public boolean executeCommand() {
               segments.addLast(segm);
-              return super.executeCommand();
+              if (!existing)
+                  return super.executeCommand();
+              return true;
+          }
+          @Override
+          public void undoCommand() {
+              if (!existing)
+                  super.undoCommand();
+              segments.removeLast();
+          }
+      }
+      public class EditSplineCommand extends Command {
+          EastNorth cprev;
+          EastNorth cnext;
+          public final Segment segm;
+          public EditSplineCommand(Segment segm) {
+              this.segm = segm;
+              cprev = segm.cprev.add(0, 0);
+              cnext = segm.cnext.add(0, 0);
+          }
+          @Override
+          public boolean executeCommand() {
+              EastNorth en = segm.cprev;
+              segm.cprev = this.cprev;
+              this.cprev = en;
+              en = segm.cnext;
+              segm.cnext = this.cnext;
+              this.cnext = en;
+              return true;
+          }
+          @Override
+          public void undoCommand() {
+              executeCommand();
+          }
+        @Override
+        public void fillModifiedData(Collection<OsmPrimitive> modified,
+                Collection<OsmPrimitive> deleted, Collection<OsmPrimitive> added) {
+            // This command doesn't touches OSM data
+        }
+        @Override
+        public String getDescriptionText() {
+            return "Edit spline";
+        }
+      }
+      public class FinishSplineCommand extends SequenceCommand {
+    	  public Segment[] saveSegments;
+          public FinishSplineCommand(Collection<Command> sequenz) {
+                super(tr("Finish spline"), sequenz);
+          }
+          @Override
+          public boolean executeCommand() {
+        	  saveSegments = new Segment[segments.size()];
+        	  int i = 0;
+        	  for (Segment segm : segments)
+        		  saveSegments[i++] = segm;
+        	  segments.clear();
+        	  return super.executeCommand();
           }
           @Override
           public void undoCommand() {
               super.undoCommand();
-              segments.removeLast();
+              segments.clear();
+              segments.addAll(Arrays.asList(saveSegments));
           }
       }
 }
