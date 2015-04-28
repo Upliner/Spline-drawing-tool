@@ -7,7 +7,6 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Graphics2D;
-import java.awt.Stroke;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
@@ -44,6 +43,7 @@ import javax.swing.AbstractAction;
 
 import org.openstreetmap.josm.command.AddCommand;
 import org.openstreetmap.josm.command.Command;
+import org.openstreetmap.josm.command.MoveCommand;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.WaySegment;
@@ -51,7 +51,6 @@ import org.openstreetmap.josm.data.osm.visitor.paint.MapPaintSettings;
 import org.openstreetmap.josm.data.osm.visitor.paint.PaintColors;
 import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
-import org.openstreetmap.josm.gui.util.GuiHelper;
 import org.openstreetmap.josm.tools.Utils;
 
 @SuppressWarnings("serial")
@@ -205,6 +204,7 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Sele
         // would like to but haven't got mouse position yet:
         // computeHelperLine(false, false, false);
     }
+    int initialMoveDelay;
 
     private void readPreferences() {
         rubberLineColor = Main.pref.getColor(marktr("helper line"), null);
@@ -213,6 +213,7 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Sele
         drawHelperLine = Main.pref.getBoolean("draw.helper-line", true);
         drawTargetHighlight = Main.pref.getBoolean("draw.target-highlight", true);
         snapToIntersectionThreshold = Main.pref.getInteger("edit.snap-intersection-threshold",10);
+        initialMoveDelay = Main.pref.getInteger("edit.initial-move-delay", 200);
     }
 
     @Override
@@ -283,23 +284,28 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Sele
 
 
     
-    
+    private Long mouseDownTime;
+    private PointHandle ph;
+    private Point helperEndpoint;
     public int index=0;
     boolean lockCounterpart;
-    Spline spl = new Spline();
+    private Spline spl = new Spline();
+    private MoveCommand mc;
     @Override
     public void mousePressed(MouseEvent e) {
-        if (e.getButton() != MouseEvent.BUTTON1)
+        mouseDownTime = null;
+        updateKeyModifiers(e);
+    	if (e.getButton() != MouseEvent.BUTTON1)
             return;
         if(!Main.map.mapView.isActiveLayerDrawable())
             return;
-        updateKeyModifiers(e);
 		helperEndpoint = null;
     	if (e.getClickCount() == 2) {
     		spl.finishSpline(10);
             Main.map.repaint();
     		return;
     	}
+        mouseDownTime = System.currentTimeMillis();
     	ph = spl.getNearestPoint(Main.map.mapView, e.getPoint());
     	if (ph != null) {
     		if (ctrl) {
@@ -313,6 +319,17 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Sele
     					&& Math.abs(ph.segm.cprev.east()+ph.segm.cnext.east()) < EPSILON
     					&& Math.abs(ph.segm.cprev.north()+ph.segm.cnext.north()) < EPSILON
     					); 
+    		}
+    		if (ph.point == SegmentPoint.ENDPOINT && !Main.main.undoRedo.commands.isEmpty()) {
+    			Command cmd = Main.main.undoRedo.commands.getLast();
+    			if (cmd instanceof MoveCommand) {
+    				mc = (MoveCommand)cmd;
+    				Collection<Node> pp = mc.getParticipatingPrimitives();
+    				if (pp.size() != 1 || !pp.contains(ph.segm.point))
+    					mc = null;
+    				else
+    					mc.changeStartPoint(ph.segm.point.getEastNorth());
+    			}
     		}
     		return;
     	}
@@ -331,36 +348,49 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Sele
 
     @Override
     public void mouseReleased(MouseEvent e) {
+    	mc = null;
+    	mouseDownTime = null;
     	mouseMoved(e);
     }
     
     @Override
     public void mouseDragged(MouseEvent e) {
-        //if (e.getButton() != MouseEvent.BUTTON1)
-        //    return;
-    	if (spl.segments.isEmpty())
-    		return;
+        updateKeyModifiers(e);
+        if(mouseDownTime == null)
+            return;
         if(!Main.map.mapView.isActiveLayerDrawable())
             return;
-        if (ph != null) {
-        	ph.movePoint(Main.map.mapView.getEastNorth(e.getX(), e.getY()));
-        	if (lockCounterpart) {
-        		if (ph.point == SegmentPoint.CONTROL_NEXT)
-        			ph.segm.cprev = ph.segm.cnext.sub(new EastNorth(0,0));
-        		else if (ph.point == SegmentPoint.CONTROL_PREV)
-        			ph.segm.cnext = ph.segm.cprev.sub(new EastNorth(0,0));
+    	if (spl.segments.isEmpty())
+    		return;
+        if (System.currentTimeMillis() - mouseDownTime < initialMoveDelay)
+            return;
+        if (ph == null) 
+        	return;
+        EastNorth en = Main.map.mapView.getEastNorth(e.getX(), e.getY());
+        if (ph.point == SegmentPoint.ENDPOINT) {
+        	if (mc == null) {
+        		mc = new MoveCommand(ph.segm.point, ph.segm.point.getEastNorth(), en);
+        		Main.main.undoRedo.add(mc);
+        	} else {
+        		mc.applyVectorTo(en);
         	}
+        } else {
+            ph.movePoint(en);
+        }
+        if (lockCounterpart) {
+        	if (ph.point == SegmentPoint.CONTROL_NEXT)
+        		ph.segm.cprev = ph.segm.cnext.sub(new EastNorth(0,0));
+        	else if (ph.point == SegmentPoint.CONTROL_PREV)
+        		ph.segm.cnext = ph.segm.cprev.sub(new EastNorth(0,0));
         }
         Main.map.repaint();
     }
     Node nodeHighlight;
-    PointHandle ph;
-    Point helperEndpoint;
     @Override
     public void mouseMoved(MouseEvent e) {
+        updateKeyModifiers(e);
         if(!Main.map.mapView.isActiveLayerDrawable())
             return;
-        updateKeyModifiers(e);
     	removeHighlighting();
     	ph = spl.getNearestPoint(Main.map.mapView, e.getPoint());
         if (ph == null) {
