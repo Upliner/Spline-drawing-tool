@@ -11,7 +11,7 @@ import org.openstreetmap.josm.plugins.PluginInformation;
  * plugin.
  */
 public class SplineDrawingPlugin extends Plugin{
-	public static final double EPSILON = 0.0000000000001;
+    public static final double EPSILON = 0.0000000000001;
     public SplineDrawingPlugin(PluginInformation info) {
         super(info);
     }
@@ -20,10 +20,9 @@ public class SplineDrawingPlugin extends Plugin{
      * Called when the JOSM map frame is created or destroyed. 
      */
     @Override
-    
     public void mapFrameInitialized(MapFrame oldFrame, MapFrame newFrame) {             
         if (oldFrame == null && newFrame != null) { // map frame added
-        	Main.map.addMapMode(new IconToggleButton(new DrawSplineAction(Main.map)));
+            Main.map.addMapMode(new IconToggleButton(new DrawSplineAction(Main.map)));
         }
     }
 
