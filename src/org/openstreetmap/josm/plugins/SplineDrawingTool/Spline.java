@@ -19,7 +19,6 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-
 import javax.swing.JOptionPane;
 
 import org.openstreetmap.josm.Main;
@@ -33,23 +32,36 @@ import org.openstreetmap.josm.data.osm.Way;
 import org.openstreetmap.josm.data.preferences.IntegerProperty;
 import org.openstreetmap.josm.gui.MapView;
 import org.openstreetmap.josm.gui.NavigatableComponent;
-import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 
 public class Spline {
     public static IntegerProperty PROP_SPLINEPOINTS = new IntegerProperty("edit.spline.num_points", 10);
     public static class Segment {
-        public Node point; // Endpoint
+        public Node node; // Endpoint
         public EastNorth cprev, cnext; // Relative offsets of control points
-        public Segment(Node point) {
-            this.point = point;
+        public Segment(Node node) {
+            this.node = node;
             cprev = new EastNorth(0, 0);
             cnext = new EastNorth(0, 0);
         }
     }
-    public final LinkedList<Segment> segments = new LinkedList<Segment>();
-    public Spline() {
+    private final LinkedList<Segment> segments = new LinkedList<Segment>();
+    public Segment getFirstSegment() {
+    	Iterator<Segment> it = segments.iterator();
+    	while (it.hasNext()) {
+    		Segment segm = it.next();
+    		if (!segm.node.isDeleted())
+    			return segm;
+    	}
+    	return null;
     }
-    public void removeListener(OsmDataLayer l) {
+    public Segment getLastSegment() {
+    	Iterator<Segment> it = segments.descendingIterator();
+    	while (it.hasNext()) {
+    		Segment segm = it.next();
+    		if (!segm.node.isDeleted())
+    			return segm;
+    	}
+    	return null;
     }
     public void paint(Graphics2D g, MapView mv, Color curveColor, Color ctlColor, Point helperEndpoint) {
         if (segments.isEmpty())
@@ -59,8 +71,10 @@ public class Spline {
 
         Point2D cbPrev = null;
         for (Segment segm : segments) {
-            Point2D pt = mv.getPoint2D(segm.point);
-            EastNorth en = segm.point.getEastNorth();
+        	if (segm.node.isDeleted())
+        		continue;
+            Point2D pt = mv.getPoint2D(segm.node);
+            EastNorth en = segm.node.getEastNorth();
 
             Point2D ca = mv.getPoint2D(en.add(segm.cprev));
             Point2D cb = mv.getPoint2D(en.add(segm.cnext));
@@ -96,7 +110,7 @@ public class Spline {
             this.point = point;
         }
         public EastNorth getPoint() {
-            EastNorth en = segm.point.getEastNorth();
+            EastNorth en = segm.node.getEastNorth();
             switch (point) {
             case ENDPOINT: return en; 
             case CONTROL_PREV: return en.add(segm.cprev); 
@@ -106,18 +120,25 @@ public class Spline {
         }
         public void movePoint(EastNorth en) {
             switch (point) {
-            case ENDPOINT: segm.point.setEastNorth(en); return;
-            case CONTROL_PREV: segm.cprev = segm.point.getEastNorth().sub(en); return;
-            case CONTROL_NEXT: segm.cnext = segm.point.getEastNorth().sub(en); return;
+            case ENDPOINT: segm.node.setEastNorth(en); return;
+            case CONTROL_PREV: segm.cprev = segm.node.getEastNorth().sub(en); return;
+            case CONTROL_NEXT: segm.cnext = segm.node.getEastNorth().sub(en); return;
             }
             throw new AssertionError();
         }
+    }
+    public boolean isEmpty() {
+    	for (Segment segm : segments)
+    		if (!segm.node.isDeleted())
+    			return false;
+    	return true;
     }
     public PointHandle getNearestPoint(MapView mv, Point2D point) {
         PointHandle bestPH = null;
         double bestDistSq =  NavigatableComponent.PROP_SNAP_DISTANCE.get();
         bestDistSq = bestDistSq * bestDistSq; 
         for (Segment segm : segments) {
+        	if (segm.node.isDeleted()) continue;
             for(SegmentPoint sp : SegmentPoint.values()) {
                 PointHandle ph = new PointHandle(segm, sp);
                 double distSq = point.distanceSq(mv.getPoint2D(ph.getPoint()));
@@ -131,39 +152,40 @@ public class Spline {
     }
     public void finishSpline() {
     	int detail = PROP_SPLINEPOINTS.get();
-        if (segments.isEmpty())
-            return;
         Way w = new Way();
         List<Command> cmds = new LinkedList<>();
         Iterator<Segment> it = segments.iterator();
-        Segment segm = it.next();
-        w.addNode(segm.point);
-        EastNorth a = segm.point.getEastNorth();
+        Segment segm;
+        do {
+        	if (!it.hasNext()) return;
+            segm = it.next();
+        } while (segm.node.isDeleted());
+        w.addNode(segm.node);
+        EastNorth a = segm.node.getEastNorth();
         EastNorth ca = a.add(segm.cnext);
         while (it.hasNext()) {
             segm = it.next();
-            EastNorth b = segm.point.getEastNorth();
+            if (segm.node.isDeleted()) continue;
+            EastNorth b = segm.node.getEastNorth();
             EastNorth cb = b.add(segm.cprev);
             if (!a.equalsEpsilon(ca, EPSILON) || !b.equalsEpsilon(cb, EPSILON))
                 for (int i = 1; i < detail; i++) {
                     Node n = new Node(Main.getProjection().eastNorth2latlon(cubicBezier(a, ca, cb, b, (double)i / detail)));
                     if (n.getCoor().isOutSideWorld()) {
                         JOptionPane.showMessageDialog(Main.parent,
-                                tr("Spline goes outside world."));
+                                tr("Spline goes outside of the world."));
                         return;
                     }
                     cmds.add(new AddCommand(n));
                     w.addNode(n);
                 }
-            w.addNode(segm.point);
+            w.addNode(segm.node);
             a = b;
             ca = a.add(segm.cnext);
         }
-        if (!cmds.isEmpty()) {
+        if (!cmds.isEmpty())
             cmds.add(new AddCommand(w));
-            Main.main.undoRedo.add(new FinishSplineCommand(cmds));
-        }
-        segments.clear();
+        Main.main.undoRedo.add(new FinishSplineCommand(cmds));
     }
       
       /**
@@ -189,7 +211,7 @@ public class Spline {
           Segment segm;
           boolean existing;
           public AddSplineNodeCommand(Segment segm, boolean existing) {
-              super(segm.point);
+              super(segm.node);
               this.segm = segm;
               this.existing = existing;
           }
@@ -206,11 +228,17 @@ public class Spline {
                   super.undoCommand();
               segments.removeLast();
           }
+          @Override
+          public String getDescriptionText() {
+        	  if (existing)
+                 return tr("Add an existing node to spline");
+        	  return super.getDescriptionText();
+          }
       }
       public class EditSplineCommand extends Command {
           EastNorth cprev;
           EastNorth cnext;
-          public final Segment segm;
+          Segment segm;
           public EditSplineCommand(Segment segm) {
               this.segm = segm;
               cprev = segm.cprev.add(0, 0);
@@ -243,7 +271,7 @@ public class Spline {
       public class FinishSplineCommand extends SequenceCommand {
     	  public Segment[] saveSegments;
           public FinishSplineCommand(Collection<Command> sequenz) {
-                super(tr("Finish spline"), sequenz);
+              super(tr("Finish spline"), sequenz);
           }
           @Override
           public boolean executeCommand() {

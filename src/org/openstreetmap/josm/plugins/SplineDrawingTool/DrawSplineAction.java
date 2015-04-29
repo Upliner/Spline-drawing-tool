@@ -9,6 +9,7 @@ import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -35,7 +36,6 @@ import java.awt.Point;
 
 import javax.swing.AbstractAction;
 
-import org.openstreetmap.josm.command.AddCommand;
 import org.openstreetmap.josm.command.Command;
 import org.openstreetmap.josm.command.MoveCommand;
 import org.openstreetmap.josm.data.osm.visitor.paint.MapPaintSettings;
@@ -52,7 +52,6 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Modi
 
     private final Shortcut backspaceShortcut;
     private final BackSpaceAction backspaceAction;
-
     public DrawSplineAction(MapFrame mapFrame)
     {  
         super(
@@ -167,10 +166,10 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Modi
                 if (cmd instanceof MoveCommand) {
                     mc = (MoveCommand)cmd;
                     Collection<Node> pp = mc.getParticipatingPrimitives();
-                    if (pp.size() != 1 || !pp.contains(ph.segm.point))
+                    if (pp.size() != 1 || !pp.contains(ph.segm.node))
                         mc = null;
                     else
-                        mc.changeStartPoint(ph.segm.point.getEastNorth());
+                        mc.changeStartPoint(ph.segm.node.getEastNorth());
                 }
             }
             if (ph.point != SegmentPoint.ENDPOINT && !Main.main.undoRedo.commands.isEmpty()) {
@@ -191,7 +190,7 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Modi
             existing = false;
         }
         Main.main.undoRedo.add(spl.new AddSplineNodeCommand(new Spline.Segment(n), existing));
-        ph = new PointHandle(spl.segments.getLast(), SegmentPoint.CONTROL_NEXT);
+        ph = new PointHandle(spl.getLastSegment(), SegmentPoint.CONTROL_NEXT);
         lockCounterpart = true;
         Main.map.repaint();
     }
@@ -212,13 +211,13 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Modi
         if (ph == null) return;
         Spline spl = getSpline();
         if (spl == null) return;
-        if (spl.segments.isEmpty()) return;
+        if (spl.isEmpty()) return;
         EastNorth en = Main.map.mapView.getEastNorth(e.getX(), e.getY());
         if (Main.getProjection().eastNorth2latlon(en).isOutSideWorld())
             return;
         if (ph.point == SegmentPoint.ENDPOINT) {
             if (mc == null) {
-                mc = new MoveCommand(ph.segm.point, ph.segm.point.getEastNorth(), en);
+                mc = new MoveCommand(ph.segm.node, ph.segm.node.getEastNorth(), en);
                 Main.main.undoRedo.add(mc);
             } else {
                 mc.applyVectorTo(en);
@@ -265,7 +264,7 @@ public  class DrawSplineAction extends MapMode implements MapViewPaintable, Modi
             helperEndpoint = null;
             Main.map.mapView.setNewCursor(cursorJoinWay, this);
             if (ph.point == SegmentPoint.ENDPOINT)
-                setHighlight(ph.segm.point);
+                setHighlight(ph.segm.node);
         }
         Main.map.repaint();
     }
