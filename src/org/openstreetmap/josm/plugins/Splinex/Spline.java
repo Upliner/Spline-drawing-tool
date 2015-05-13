@@ -76,6 +76,8 @@ public class Spline {
         return nodes.get(0) == nodes.get(nodes.size() - 1);
     }
 
+    //int chkTime;
+
     public void paint(Graphics2D g, MapView mv, Color curveColor, Color ctlColor, Point helperEndpoint, short direction) {
         if (nodes.isEmpty())
             return;
@@ -116,6 +118,12 @@ public class Spline {
         g.setStroke(new BasicStroke(1));
         g.setColor(ctlColor);
         g.draw(ctl);
+        /* if (chkTime > 0 || sht.chkCnt > 0) {
+            g.drawString(tr("Check count: {0}", sht.chkCnt), 10, 60);
+            g.drawString(tr("Check time: {0} us", chkTime), 10, 70);
+        }
+        chkTime = 0;
+        sht.chkCnt = 0; */
     }
 
     public enum SplinePoint {
@@ -195,6 +203,30 @@ public class Spline {
             }
         }
         return bestPH;
+    }
+
+    SplineHitTest sht = new SplineHitTest();
+
+    public boolean doesHit(double x, double y, MapView mv) {
+        //long start = System.nanoTime();
+        //sht.chkCnt = 0;
+        sht.setCoord(x, y, NavigatableComponent.PROP_SNAP_DISTANCE.get());
+        Point2D prev = null;
+        Point2D cbPrev = null;
+        for (SNode sn : nodes) {
+            Point2D pt = mv.getPoint2D(sn.node);
+            EastNorth en = sn.node.getEastNorth();
+            Point2D ca = mv.getPoint2D(en.add(sn.cprev));
+
+            if (cbPrev != null)
+                if (sht.checkCurve(prev.getX(), prev.getY(), cbPrev.getX(), cbPrev.getY(), ca.getX(), ca.getY(),
+                        pt.getX(), pt.getY()))
+                    return true;
+            cbPrev = mv.getPoint2D(en.add(sn.cnext));
+            prev = pt;
+        }
+        //chkTime = (int) ((System.nanoTime() - start) / 1000);
+        return false;
     }
 
     public void finishSpline() {
@@ -443,6 +475,13 @@ public class Spline {
         public Icon getDescriptionIcon() {
             return ImageProvider.get("aligncircle");
         }
+    }
+
+    public List<OsmPrimitive> getNodes() {
+        ArrayList<OsmPrimitive> result = new ArrayList<>(nodes.size());
+        for (SNode sn : nodes)
+            result.add(sn.node);
+        return result;
     }
 
     public class FinishSplineCommand extends SequenceCommand {

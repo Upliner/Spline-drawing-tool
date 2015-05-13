@@ -94,14 +94,16 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
         Main.map.keyDetector.addKeyListener(this);
     }
 
-    int initialMoveDelay;
+    int initialMoveDelay, initialMoveThreshold;
 
     private void readPreferences() {
         rubberLineColor = Main.pref.getColor(marktr("helper line"), null);
         if (rubberLineColor == null)
             rubberLineColor = PaintColors.SELECTED.get();
 
-        initialMoveDelay = Main.pref.getInteger("edit.initial-move-delay", 200);
+        initialMoveDelay = Main.pref.getInteger("edit.initial-move-", 200);
+        initialMoveThreshold = Main.pref.getInteger("edit.initial-move-threshold", 5);
+        initialMoveThreshold *= initialMoveThreshold;
         drawHelperLine = Main.pref.getBoolean("draw.helper-line", true);
     }
 
@@ -128,10 +130,12 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
     private Long mouseDownTime;
     private PointHandle ph;
     private Point helperEndpoint;
+    private Point clickPos;
     public int index = 0;
     boolean lockCounterpart;
     private MoveCommand mc;
     private boolean dragControl;
+    private boolean dragSpline;
 
     @Override
     public void mousePressed(MouseEvent e) {
@@ -141,13 +145,12 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
             helperEndpoint = null; // Hide helper line when panning
             return;
         }
-        if (!Main.map.mapView.isActiveLayerDrawable())
-            return;
+        if (!Main.map.mapView.isActiveLayerDrawable()) return;
         Spline spl = getSpline();
-        if (spl == null)
-            return;
+        if (spl == null) return;
         helperEndpoint = null;
         dragControl = false;
+        dragSpline = false;
         mouseDownTime = System.currentTimeMillis();
         ph = spl.getNearestPoint(Main.map.mapView, e.getPoint());
         if (e.getClickCount() == 2) {
@@ -160,6 +163,7 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
             Main.map.repaint();
             return;
         }
+        clickPos = e.getPoint();
         if (ph != null) {
             if (ctrl) {
                 if (ph.point == SplinePoint.ENDPOINT) {
@@ -190,8 +194,11 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
             }
             return;
         }
-        if (spl.isClosed())
+        if (!ctrl && spl.doesHit(e.getX(), e.getY(), Main.map.mapView)) {
+            dragSpline = true;
             return;
+        }
+        if (spl.isClosed()) return;
         if (direction == 0)
             if (spl.nodeCount() < 2)
                 direction = 1;
@@ -218,6 +225,8 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
     public void mouseReleased(MouseEvent e) {
         mc = null;
         mouseDownTime = null;
+        dragSpline = false;
+        clickPos = null;
         mouseMoved(e);
         if (direction == 0 && ph != null) {
             if (ph.idx >= ph.getSpline().nodeCount() - 1)
@@ -230,29 +239,35 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
     @Override
     public void mouseDragged(MouseEvent e) {
         updateKeyModifiers(e);
-        if (mouseDownTime == null)
-            return;
-        if (!Main.map.mapView.isActiveLayerDrawable())
-            return;
-        if (System.currentTimeMillis() - mouseDownTime < initialMoveDelay)
-            return;
-        if (ph == null)
-            return;
+        if (mouseDownTime == null) return;
+        if (!Main.map.mapView.isActiveLayerDrawable()) return;
+        if (System.currentTimeMillis() - mouseDownTime < initialMoveDelay) return;
         Spline spl = getSpline();
-        if (spl == null)
-            return;
-        if (spl.isEmpty())
+        if (spl == null) return;
+        if (spl.isEmpty()) return;
+        if (clickPos != null && clickPos.distanceSq(e.getPoint()) < initialMoveThreshold)
             return;
         EastNorth en = Main.map.mapView.getEastNorth(e.getX(), e.getY());
         if (Main.getProjection().eastNorth2latlon(en).isOutSideWorld())
             return;
+        if (dragSpline) {
+            if (mc == null) {
+                mc = new MoveCommand(spl.getNodes(), Main.map.mapView.getEastNorth(clickPos.x, clickPos.y), en);
+                Main.main.undoRedo.add(mc);
+                clickPos = null;
+            } else
+                mc.applyVectorTo(en);
+            Main.map.repaint();
+            return;
+        }
+        clickPos = null;
+        if (ph == null) return;
         if (ph.point == SplinePoint.ENDPOINT) {
             if (mc == null) {
                 mc = new MoveCommand(ph.sn.node, ph.sn.node.getEastNorth(), en);
                 Main.main.undoRedo.add(mc);
-            } else {
+            } else
                 mc.applyVectorTo(en);
-            }
         } else {
             if (dragControl) {
                 Main.main.undoRedo.add(spl.new EditSplineCommand(ph.sn));
@@ -275,29 +290,33 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
     @Override
     public void mouseMoved(MouseEvent e) {
         updateKeyModifiers(e);
-        if (!Main.map.mapView.isActiveLayerDrawable())
-            return;
+        if (!Main.map.mapView.isActiveLayerDrawable()) return;
         Spline spl = getSpline();
-        if (spl == null)
-            return;
+        if (spl == null) return;
         Point oldHelperEndpoint = helperEndpoint;
         PointHandle oldph = ph;
         boolean redraw = false;
         ph = spl.getNearestPoint(Main.map.mapView, e.getPoint());
-        if (ph == null) {
-            Node n = null;
-            if (!ctrl)
-                n = Main.map.mapView.getNearestNode(e.getPoint(), OsmPrimitive.isUsablePredicate);
-            if (n == null) {
-                redraw = removeHighlighting();
-                helperEndpoint = e.getPoint();
-                Main.map.mapView.setNewCursor(cursor, this);
-            } else {
-                redraw = setHighlight(n);
-                Main.map.mapView.setNewCursor(cursorJoinNode, this);
-                helperEndpoint = Main.map.mapView.getPoint(n);
+        if (ph == null)
+            if (!ctrl && spl.doesHit(e.getX(), e.getY(), Main.map.mapView)) {
+                helperEndpoint = null;
+                Main.map.mapView.setNewCursor(Cursor.MOVE_CURSOR, this);
+            } else
+            {
+                Node n = null;
+                if (!ctrl)
+                    n = Main.map.mapView.getNearestNode(e.getPoint(), OsmPrimitive.isUsablePredicate);
+                if (n == null) {
+                    redraw = removeHighlighting();
+                    helperEndpoint = e.getPoint();
+                    Main.map.mapView.setNewCursor(cursor, this);
+                } else {
+                    redraw = setHighlight(n);
+                    Main.map.mapView.setNewCursor(cursorJoinNode, this);
+                    helperEndpoint = Main.map.mapView.getPoint(n);
+                }
             }
-        } else {
+        else {
             helperEndpoint = null;
             Main.map.mapView.setNewCursor(cursorJoinWay, this);
             if (ph.point == SplinePoint.ENDPOINT)
@@ -307,6 +326,7 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
         }
         if (!drawHelperLine || spl.isClosed() || direction == 0)
             helperEndpoint = null;
+
         if (redraw || oldHelperEndpoint != helperEndpoint || (oldph == null && ph != null)
                 || (oldph != null && !oldph.equals(ph)))
             Main.map.repaint();
