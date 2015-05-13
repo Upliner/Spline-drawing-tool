@@ -208,7 +208,7 @@ public class Spline {
         EastNorth ca = a.add(sn.cnext);
         while (it.hasNext()) {
             sn = it.next();
-            if (sn.node.isDeleted())
+            if (sn.node.isDeleted() && sn != nodes.get(0))
                 cmds.add(new UndeleteNodeCommand(sn.node));
             EastNorth b = sn.node.getEastNorth();
             EastNorth cb = b.add(sn.cprev);
@@ -250,8 +250,8 @@ public class Spline {
     }
 
     public class AddSplineNodeCommand extends Command {
-        SNode sn;
-        boolean existing;
+        private final SNode sn;
+        private final boolean existing;
         boolean affected;
 
         public AddSplineNodeCommand(SNode sn, boolean existing) {
@@ -324,11 +324,11 @@ public class Spline {
                 idx = nodes.size() - 1;
             sn = nodes.get(idx);
             wasDeleted = sn.node.isDeleted();
-            nodes.remove(idx);
             if (deleteUnderlying()) {
                 sn.node.setDeleted(true);
                 affected = true;
             }
+            nodes.remove(idx);
             return true;
         }
 
