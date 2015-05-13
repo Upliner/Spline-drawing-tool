@@ -11,7 +11,7 @@
 ** Call "ant help" to get possible build targets.
 **
 -->
-<project name="spline_drawing_tool" default="dist" basedir=".">
+<project name="splinex" default="dist" basedir=".">
 
     <!-- enter the SVN commit message -->
     <property name="commit.message" value="Commit message"/>
@@ -24,8 +24,8 @@
 
          See http://josm.openstreetmap.de/wiki/DevelopersGuide/DevelopingPlugins
     -->
-    <property name="plugin.author" value="Bularca Sergiu"/>
-    <property name="plugin.class" value="org.openstreetmap.josm.plugins.SplineDrawingTool.SplineDrawingPlugin"/>
+    <property name="plugin.author" value="Upliner"/>
+    <property name="plugin.class" value="org.openstreetmap.josm.plugins.Splinex.SplinexPlugin"/>
     <property name="plugin.description" value="Allows to draw splines"/>
     <property name="plugin.icon" value="images/mapmode/spline2.png"/>
 

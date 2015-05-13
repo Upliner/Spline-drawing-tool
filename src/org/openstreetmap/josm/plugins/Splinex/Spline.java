@@ -1,11 +1,6 @@
-/**
- * 
- */
-package org.openstreetmap.josm.plugins.SplineDrawingTool;
+package org.openstreetmap.josm.plugins.Splinex;
 
-//import static org.openstreetmap.josm.plugins.contourmerge.util.Assert.checkArgNotNull;
-
-import static org.openstreetmap.josm.plugins.SplineDrawingTool.SplineDrawingPlugin.EPSILON;
+import static org.openstreetmap.josm.plugins.Splinex.SplinexPlugin.EPSILON;
 import static org.openstreetmap.josm.tools.I18n.tr;
 
 import java.awt.BasicStroke;

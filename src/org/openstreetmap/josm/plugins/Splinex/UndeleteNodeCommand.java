@@ -1,4 +1,4 @@
-package org.openstreetmap.josm.plugins.SplineDrawingTool;
+package org.openstreetmap.josm.plugins.Splinex;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 

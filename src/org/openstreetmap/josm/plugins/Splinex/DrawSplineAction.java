@@ -1,6 +1,6 @@
-package org.openstreetmap.josm.plugins.SplineDrawingTool;
+package org.openstreetmap.josm.plugins.Splinex;
 
-import static org.openstreetmap.josm.plugins.SplineDrawingTool.SplineDrawingPlugin.EPSILON;
+import static org.openstreetmap.josm.plugins.Splinex.SplinexPlugin.EPSILON;
 import static org.openstreetmap.josm.tools.I18n.marktr;
 import static org.openstreetmap.josm.tools.I18n.tr;
 
@@ -35,8 +35,8 @@ import org.openstreetmap.josm.gui.layer.MapViewPaintable;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.gui.util.KeyPressReleaseListener;
 import org.openstreetmap.josm.gui.util.ModifierListener;
-import org.openstreetmap.josm.plugins.SplineDrawingTool.Spline.PointHandle;
-import org.openstreetmap.josm.plugins.SplineDrawingTool.Spline.SplinePoint;
+import org.openstreetmap.josm.plugins.Splinex.Spline.PointHandle;
+import org.openstreetmap.josm.plugins.Splinex.Spline.SplinePoint;
 import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Shortcut;
 

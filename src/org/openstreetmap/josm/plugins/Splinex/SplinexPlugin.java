@@ -1,4 +1,4 @@
-package org.openstreetmap.josm.plugins.SplineDrawingTool;
+package org.openstreetmap.josm.plugins.Splinex;
 
 import org.openstreetmap.josm.Main;
 import org.openstreetmap.josm.gui.IconToggleButton;
@@ -8,13 +8,13 @@ import org.openstreetmap.josm.plugins.Plugin;
 import org.openstreetmap.josm.plugins.PluginInformation;
 
 /**
- * <strong>SplineDrawingPlugin</strong> is the main class for the
- * <tt>spline-drawing-tool</tt> plugin.
+ * <strong>SplinexPlugin</strong> is the main class for the <tt>Splinex</tt>
+ * plugin.
  */
-public class SplineDrawingPlugin extends Plugin {
+public class SplinexPlugin extends Plugin {
     public static final double EPSILON = 0.0000000000001;
 
-    public SplineDrawingPlugin(PluginInformation info) {
+    public SplinexPlugin(PluginInformation info) {
         super(info);
     }
 
@@ -30,6 +30,6 @@ public class SplineDrawingPlugin extends Plugin {
 
     @Override
     public PreferenceSetting getPreferenceSetting() {
-        return new SplineDrawingPreference();
+        return new SplinexPreference();
     }
 }
