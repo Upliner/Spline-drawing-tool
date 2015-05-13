@@ -95,9 +95,11 @@ public class Spline {
             Point2D ca = mv.getPoint2D(en.add(sn.cprev));
             Point2D cb = mv.getPoint2D(en.add(sn.cnext));
 
-            ctl.moveTo(ca.getX(), ca.getY());
-            ctl.lineTo(pt.getX(), pt.getY());
-            ctl.lineTo(cb.getX(), cb.getY());
+            if (cbPrev != null || !isClosed()) {
+                ctl.moveTo(ca.getX(), ca.getY());
+                ctl.lineTo(pt.getX(), pt.getY());
+                ctl.lineTo(cb.getX(), cb.getY());
+            }
 
             if (cbPrev == null)
                 curv.moveTo(pt.getX(), pt.getY());

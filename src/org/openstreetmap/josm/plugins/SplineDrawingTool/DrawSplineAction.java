@@ -149,7 +149,7 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
         mouseDownTime = System.currentTimeMillis();
         ph = spl.getNearestPoint(Main.map.mapView, e.getPoint());
         if (e.getClickCount() == 2) {
-            if (!spl.isClosed() && ph != null && ph.idx == 0 && ph.point == SplinePoint.ENDPOINT) {
+            if (!spl.isClosed() && spl.nodeCount() > 1 && ph != null && ph.idx == 0 && ph.point == SplinePoint.ENDPOINT) {
                 Main.main.undoRedo.add(spl.new CloseSplineCommand());
                 return;
             }
@@ -396,7 +396,11 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
     @Override
     public void doKeyPressed(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_DELETE && ph != null) {
-            Main.main.undoRedo.add(ph.getSpline().new DeleteSplineNodeCommand(ph.idx));
+            Spline spl = ph.getSpline();
+            if (spl.nodeCount() == 3 && spl.isClosed() && ph.idx == 1)
+                return; // Don't allow to delete node when it results with
+                        // two-node closed spline
+            Main.main.undoRedo.add(spl.new DeleteSplineNodeCommand(ph.idx));
             e.consume();
         }
     }
