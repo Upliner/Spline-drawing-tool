@@ -76,13 +76,17 @@ public class Spline {
         return nodes.get(0) == nodes.get(nodes.size() - 1);
     }
 
-    public void paint(Graphics2D g, MapView mv, Color curveColor, Color ctlColor, Point helperEndpoint) {
+    public void paint(Graphics2D g, MapView mv, Color curveColor, Color ctlColor, Point helperEndpoint, short direction) {
         if (nodes.isEmpty())
             return;
         final GeneralPath curv = new GeneralPath();
         final GeneralPath ctl = new GeneralPath();
 
         Point2D cbPrev = null;
+        if (helperEndpoint != null && direction == -1) {
+            cbPrev = new Point2D.Double(helperEndpoint.x, helperEndpoint.y);
+            curv.moveTo(helperEndpoint.x, helperEndpoint.y);
+        }
         for (SNode sn : nodes) {
             Point2D pt = mv.getPoint2D(sn.node);
             EastNorth en = sn.node.getEastNorth();
@@ -102,7 +106,7 @@ public class Spline {
                 curv.curveTo(cbPrev.getX(), cbPrev.getY(), ca.getX(), ca.getY(), pt.getX(), pt.getY());
             cbPrev = cb;
         }
-        if (helperEndpoint != null) {
+        if (helperEndpoint != null && direction == 1) {
             curv.curveTo(cbPrev.getX(), cbPrev.getY(), helperEndpoint.getX(), helperEndpoint.getY(),
                     helperEndpoint.getX(), helperEndpoint.getY());
         }
@@ -252,16 +256,22 @@ public class Spline {
     public class AddSplineNodeCommand extends Command {
         private final SNode sn;
         private final boolean existing;
+        private final int idx;
         boolean affected;
 
-        public AddSplineNodeCommand(SNode sn, boolean existing) {
+        public AddSplineNodeCommand(SNode sn, boolean existing, int idx) {
             this.sn = sn;
             this.existing = existing;
+            this.idx = idx;
+        }
+
+        public AddSplineNodeCommand(SNode sn, boolean existing) {
+            this(sn, existing, nodes.size() - 1);
         }
 
         @Override
         public boolean executeCommand() {
-            nodes.add(sn);
+            nodes.add(idx, sn);
             if (!existing) {
                 getLayer().data.addPrimitive(sn.node);
                 sn.node.setModified(true);
@@ -274,7 +284,7 @@ public class Spline {
         public void undoCommand() {
             if (!existing)
                 getLayer().data.removePrimitive(sn.node);
-            nodes.remove(nodes.size() - 1);
+            nodes.remove(idx);
             affected = false;
         }
 
@@ -407,9 +417,6 @@ public class Spline {
     }
 
     public class CloseSplineCommand extends Command {
-        public CloseSplineCommand() {
-        }
-
         @Override
         public boolean executeCommand() {
             nodes.add(nodes.get(0));

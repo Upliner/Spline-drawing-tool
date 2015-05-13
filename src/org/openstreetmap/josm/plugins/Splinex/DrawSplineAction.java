@@ -137,8 +137,10 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
     public void mousePressed(MouseEvent e) {
         mouseDownTime = null;
         updateKeyModifiers(e);
-        if (e.getButton() != MouseEvent.BUTTON1)
+        if (e.getButton() != MouseEvent.BUTTON1) {
+            helperEndpoint = null; // Hide helper line when panning
             return;
+        }
         if (!Main.map.mapView.isActiveLayerDrawable())
             return;
         Spline spl = getSpline();
@@ -149,7 +151,8 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
         mouseDownTime = System.currentTimeMillis();
         ph = spl.getNearestPoint(Main.map.mapView, e.getPoint());
         if (e.getClickCount() == 2) {
-            if (!spl.isClosed() && spl.nodeCount() > 1 && ph != null && ph.idx == 0 && ph.point == SplinePoint.ENDPOINT) {
+            if (!spl.isClosed() && spl.nodeCount() > 1 && ph != null && ph.point == SplinePoint.ENDPOINT
+                    && ((ph.idx == 0 && direction == 1) || (ph.idx == spl.nodeCount() - 1 && direction == -1))) {
                 Main.main.undoRedo.add(spl.new CloseSplineCommand());
                 return;
             }
@@ -189,6 +192,11 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
         }
         if (spl.isClosed())
             return;
+        if (direction == 0)
+            if (spl.nodeCount() < 2)
+                direction = 1;
+            else
+                return;
         Node n = null;
         boolean existing = false;
         if (!ctrl) {
@@ -199,8 +207,9 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
             n = new Node(Main.map.mapView.getLatLon(e.getX(), e.getY()));
             existing = false;
         }
-        Main.main.undoRedo.add(spl.new AddSplineNodeCommand(new Spline.SNode(n), existing));
-        ph = spl.new PointHandle(spl.nodeCount() - 1, SplinePoint.CONTROL_NEXT);
+        int idx = direction == -1 ? 0 : spl.nodeCount();
+        Main.main.undoRedo.add(spl.new AddSplineNodeCommand(new Spline.SNode(n), existing, idx));
+        ph = spl.new PointHandle(idx, direction == -1 ? SplinePoint.CONTROL_PREV : SplinePoint.CONTROL_NEXT);
         lockCounterpart = true;
         Main.map.repaint();
     }
@@ -210,6 +219,12 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
         mc = null;
         mouseDownTime = null;
         mouseMoved(e);
+        if (direction == 0 && ph != null) {
+            if (ph.idx >= ph.getSpline().nodeCount() - 1)
+                direction = 1;
+            else if (ph.idx == 0)
+                direction = -1;
+        }
     }
 
     @Override
@@ -255,6 +270,7 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
     }
 
     Node nodeHighlight;
+    short direction;
 
     @Override
     public void mouseMoved(MouseEvent e) {
@@ -289,7 +305,7 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
             else
                 redraw = removeHighlighting();
         }
-        if (!drawHelperLine || spl.isClosed())
+        if (!drawHelperLine || spl.isClosed() || direction == 0)
             helperEndpoint = null;
         if (redraw || oldHelperEndpoint != helperEndpoint || (oldph == null && ph != null)
                 || (oldph != null && !oldph.equals(ph)))
@@ -335,7 +351,7 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
         Spline spl = getSpline();
         if (spl == null)
             return;
-        spl.paint(g, mv, rubberLineColor, Color.green, helperEndpoint);
+        spl.paint(g, mv, rubberLineColor, Color.green, helperEndpoint, direction);
         if (ph != null && (ph.point != SplinePoint.ENDPOINT || (nodeHighlight != null && nodeHighlight.isDeleted()))) {
             g.setColor(MapPaintSettings.INSTANCE.getSelectedColor());
             Point p = mv.getPoint(ph.getPoint());
@@ -400,6 +416,11 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
                 return; // Don't allow to delete node when it results with
                         // two-node closed spline
             Main.main.undoRedo.add(spl.new DeleteSplineNodeCommand(ph.idx));
+            e.consume();
+        }
+        if (e.getKeyCode() == KeyEvent.VK_ESCAPE && direction != 0) {
+            direction = 0;
+            Main.map.mapView.repaint();
             e.consume();
         }
     }
