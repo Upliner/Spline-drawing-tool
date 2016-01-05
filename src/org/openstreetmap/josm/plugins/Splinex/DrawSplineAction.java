@@ -56,7 +56,7 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
     public DrawSplineAction(MapFrame mapFrame) {
         super(tr("Spline drawing"), // name
                 "spline2", // icon name
-                tr("Draw a spline curve"), // tooltip
+                tr("Draw a spline curve (dev)"), // tooltip
                 mapFrame, getCursor());
 
         backspaceShortcut = Shortcut.registerShortcut("mapmode:backspace", tr("Backspace in Add mode"),
@@ -276,9 +276,9 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
             ph.movePoint(en);
             if (lockCounterpart) {
                 if (ph.point == SplinePoint.CONTROL_NEXT)
-                    ph.sn.cprev = ph.sn.cnext.sub(new EastNorth(0, 0));
+                    ph.sn.cprev = new EastNorth(0, 0).subtract(ph.sn.cnext);
                 else if (ph.point == SplinePoint.CONTROL_PREV)
-                    ph.sn.cnext = ph.sn.cprev.sub(new EastNorth(0, 0));
+                    ph.sn.cnext = new EastNorth(0, 0).subtract(ph.sn.cprev);
             }
         }
         Main.map.repaint();
