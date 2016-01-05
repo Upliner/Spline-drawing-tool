@@ -70,6 +70,8 @@ public class SplineHitTest {
         double y1234 = (y123 + y234) / 2;
         if (checkPoint(x1234, y1234))
             return true;
+        if (Math.abs(x1-x1234)<0.0001 && Math.abs(y1-y1234)<0.0001)
+            return false; // avoid infinite loop
         return checkCurve(x1, y1, x12, y12, x123, y123, x1234, y1234)
             || checkCurve(x1234, y1234, x234, y234, x34, y34, x4, y4);
     }
