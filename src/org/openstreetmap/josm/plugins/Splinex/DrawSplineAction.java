@@ -56,7 +56,7 @@ public class DrawSplineAction extends MapMode implements MapViewPaintable, KeyPr
     public DrawSplineAction(MapFrame mapFrame) {
         super(tr("Spline drawing"), // name
                 "spline2", // icon name
-                tr("Draw a spline curve (dev)"), // tooltip
+                tr("Draw a spline curve"), // tooltip
                 mapFrame, getCursor());
 
         backspaceShortcut = Shortcut.registerShortcut("mapmode:backspace", tr("Backspace in Add mode"),
